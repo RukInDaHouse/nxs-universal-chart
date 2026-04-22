@@ -26,13 +26,23 @@ jobs:
           python-version: '3.13'
 
       - name: Set up chart-testing
-        uses: helm/chart-testing-action@v2.8.0
+        uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
+        with:
+          # renovate: github=helm/chart-testing
+          version: v3.14.0
+
+      - name: Run chart-testing (list-changed)
+        id: list-changed
+        run: |
+          changed="$(ct list-changed --config .github/linters/ct.yaml)"
+          if [[ -n "$changed" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "changed_list=\"${changed//$'\n'/ }\"" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: install helm unittest plugin
+        if: steps.list-changed.outputs.changed == 'true'
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.3 --verify=false
 
       - name: Run chart-testing (lint)
-        run: ct lint --all --target-branch ${{ github.event.repository.default_branch }} --chart-dirs .
-
-      - name: Create kind cluster
-        uses: helm/kind-action@v1.12.0
-
-      - name: Run chart-testing (install)
-        run: ct install --target-branch ${{ github.event.repository.default_branch }}
+        run: ct lint --all --config .github/linters/ct.yaml --chart-dirs .
