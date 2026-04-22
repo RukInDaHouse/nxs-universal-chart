@@ -7,7 +7,6 @@ version: 3.0.12
 appVersion: "v1"
 icon: https://registry.nixys.ru/logo.png
 home: https://github.com/nixys/nxs-universal-chart
-broken_yaml: [unclosed bracket 
 maintainers:
   - name: Nixys Team
     email: hello@nixys.io
