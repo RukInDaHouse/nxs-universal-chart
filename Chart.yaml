@@ -18,7 +18,7 @@ annotations:
   artifacthub.io/category: integration-delivery
   artifacthub.io/prerelease: "false"
   artifacthub.io/license: Apache License 2.0
-  artifacthub.io/links:  |
+  artifacthub.io/links: |
     - name: Home
       url: https://nixys.io
     - name: Source
