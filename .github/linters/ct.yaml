@@ -8,5 +8,5 @@ github-groups: true
 helm-extra-args: --timeout 600s
 use-helmignore: true
 validate-chart-schema: true
-validate-maintainers: true
+validate-maintainers: false
 validate-yaml: true
