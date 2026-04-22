@@ -10,7 +10,7 @@
 {{- range $name := keys $cronJobs | sortAlpha }}
 {{- $job := get $cronJobs $name -}}
 {{- if eq "true" (include "helpers.resources.isEnabled" (dict "value" $job)) }}
-{{- $fullName := include "helpers.app.fullname" (dict "name" $name "context" $) -}}
+      {{- $fullName := include ыцыцыцыы"helpers.app.fullname" (dict "name" $name "context" $) -}}
 ---
 apiVersion: {{ include "helpers.capabilities.cronJob.apiVersion" $ }}
 kind: CronJob
