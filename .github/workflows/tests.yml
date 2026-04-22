@@ -12,8 +12,106 @@ env:
   ARCH: "amd64"
 
 jobs:
+  lint-tests:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5.0.0
+
+      - uses: actions/setup-python@v6.0.0
+        with:
+          python-version: '3.13'
+
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2.8.0
+
+      - name: Run chart-testing (list-changed)
+        id: list-changed
+        run: |
+          changed="$(ct list-changed --config .github/linters/ct.yaml)"
+          if [[ -n "$changed" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "changed_list=\"${changed//$'\n'/ }\"" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: install helm unittest plugin
+        if: steps.list-changed.outputs.changed == 'true'
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.3 --verify=false
+
+      - name: Run chart-testing (lint)
+        run: ct lint --config .github/linters/ct.yaml --chart-dirs . --charts .
+
+  unit-tests:
+    needs: lint-tests
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5.0.0
+
+      - name: Install helm unittest plugin
+        run: |
+          helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.3 --verify=false
+
+      - name: Run chart-testing (unit-tests)
+        run: |
+          helm dependency update
+          helm unittest -f 'tests/units/*_test.yaml' .
+
+  smoke-tests:
+    needs: lint-tests
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v5.0.0
+
+      - name: Update helm dependencies
+        run: |
+          helm dependency update
+
+      - uses: actions/setup-python@v6.0.0
+        with:
+          python-version: '3.13'
+      - run: pip install PyYAML
+
+      - name: Install kubeconform
+        run: |
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-${ARCH}.tar.gz" |
+          tar -xz -C /usr/local/bin kubeconform
+
+      - name: Run chart-testing (smoke-tests)
+        run: |
+          python3 tests/smokes/run/smoke.py --scenario default-empty
+          python3 tests/smokes/run/smoke.py --scenario schema-invalid-list-contract
+          python3 tests/smokes/run/smoke.py --scenario rendering-contract
+          python3 tests/smokes/run/smoke.py --scenario example-render
+          python3 tests/smokes/run/smoke.py --scenario example-kubeconform
 
   e2e-tests:
+    needs:
+      - lint-tests
+      - unit-tests
+      - smoke-tests
     runs-on: ubuntu-24.04
     permissions:
       contents: read
