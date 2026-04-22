@@ -75,7 +75,7 @@ jobs:
           format: 'table'
 
       - name: Check deprecated K8s APIs
-        uses: FairwindsOps/pluto-action@v1
+        uses: FairwindsOps/pluto/github-action@master
         with:
           helm-chart-path: .
           ignore-deprecations: false
