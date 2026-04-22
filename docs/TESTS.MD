@@ -145,11 +145,11 @@ tests/e2e/
 
 `tests/e2e/test-e2e.sh` performs the following steps:
 
-1. Starts a disposable kind cluster from `tests/e2e/kind.yaml`.
+1. Starts a disposable kind cluster from `tests/e2e/kind.yaml`, or reuses the current kube-context when `USE_EXISTING_CLUSTER=true`.
 2. Creates the fixed namespace `nxs-universal-chart-e2e`.
 3. Runs `helm upgrade --install` against the chart root with `tests/e2e/values/install.values.yaml`.
 4. Verifies the installed Deployment, StatefulSet, Service, Ingress, HPA, PDB, NetworkPolicy, ConfigMap, Secret, hook Job, standard Job, and CronJob.
-5. Cleans up the kind cluster on exit.
+5. Cleans up the kind cluster on exit when it created the cluster itself.
 
 Run the default end-to-end flow:
 
@@ -187,8 +187,30 @@ make test-e2e E2E_ARGS="--debug"
 
 Optional environment overrides:
 
+- `USE_EXISTING_CLUSTER`
 - `CLUSTER_NAME`
 - `K8S_VERSION`
+
+GitHub Actions can reuse the same runner script after creating a cluster with [`helm/kind-action@v1.12.0`](https://github.com/helm/kind-action):
+
+```yaml
+e2e-tests:
+  runs-on: ubuntu-24.04
+  steps:
+    - uses: actions/checkout@v5.0.0
+    - uses: azure/setup-helm@v5.0.0
+    - uses: helm/kind-action@v1.12.0
+      with:
+        cluster_name: nxs-universal-chart-e2e
+        config: tests/e2e/kind.yaml
+        node_image: kindest/node:v1.35.0
+        kubectl_version: v1.35.0
+        wait: 60s
+    - run: bash tests/e2e/test-e2e.sh
+      env:
+        USE_EXISTING_CLUSTER: "true"
+        CLUSTER_NAME: nxs-universal-chart-e2e
+```
 
 ## Notes
 

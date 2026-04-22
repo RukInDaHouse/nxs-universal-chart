@@ -7,6 +7,7 @@ set -o pipefail
 ROOT_DIR="$(git rev-parse --show-toplevel)"
 SCRIPT_DIR="${ROOT_DIR}/tests/e2e"
 CLUSTER_CREATED=false
+USE_EXISTING_CLUSTER="${USE_EXISTING_CLUSTER:-false}"
 CLUSTER_NAME="${CLUSTER_NAME:-$(mktemp -u "nxs-universal-chart-e2e-XXXXXXXXXX" | tr "[:upper:]" "[:lower:]")}"
 K8S_VERSION="${K8S_VERSION:-v1.35.0}"
 E2E_NAMESPACE="nxs-universal-chart-e2e"
@@ -28,13 +29,20 @@ show_help() {
   echo "Unknown arguments are passed through to 'helm upgrade --install'."
   echo ""
   echo "Environment overrides:"
+  echo "  USE_EXISTING_CLUSTER  Reuse the current kube-context instead of creating kind"
   echo "  CLUSTER_NAME          Kind cluster name"
   echo "  K8S_VERSION           kindest/node tag"
   echo ""
 }
 
 verify_prerequisites() {
-  for bin in docker kind kubectl helm; do
+  local required_bins=(kubectl helm)
+
+  if [ "${USE_EXISTING_CLUSTER}" != "true" ]; then
+    required_bins+=(docker kind)
+  fi
+
+  for bin in "${required_bins[@]}"; do
     if ! command -v "${bin}" >/dev/null 2>&1; then
       log_error "${bin} is not installed"
       exit 1
@@ -51,7 +59,7 @@ update_chart_dependencies() {
 cleanup() {
   local exit_code=$?
 
-  if [ "${exit_code}" -ne 0 ] && [ "${CLUSTER_CREATED}" = true ]; then
+  if [ "${exit_code}" -ne 0 ]; then
     dump_cluster_state || true
   fi
 
@@ -89,6 +97,13 @@ create_kind_cluster() {
     --wait=60s
 
   CLUSTER_CREATED=true
+  echo
+}
+
+use_existing_cluster() {
+  log_info "Using existing Kubernetes cluster from current context"
+  kubectl cluster-info >/dev/null
+  kubectl get nodes
   echo
 }
 
@@ -161,7 +176,11 @@ main() {
   trap cleanup EXIT
 
   update_chart_dependencies
-  create_kind_cluster
+  if [ "${USE_EXISTING_CLUSTER}" = "true" ]; then
+    use_existing_cluster
+  else
+    create_kind_cluster
+  fi
   ensure_namespace
   install_chart "$@"
   verify_release_resources

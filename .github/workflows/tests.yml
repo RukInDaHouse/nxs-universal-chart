@@ -13,7 +13,7 @@ env:
 
 jobs:
 
-  smoke-tests:
+  e2e-tests:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -26,24 +26,17 @@ jobs:
       - name: Set up Helm
         uses: azure/setup-helm@v5.0.0
 
-      - name: Update helm dependencies
-        run: |
-          helm dependency update
-
-      - uses: actions/setup-python@v6.0.0
+      - name: Create kind cluster
+        uses: helm/kind-action@v1.12.0
         with:
-          python-version: '3.13'
-      - run: pip install PyYAML
+          cluster_name: nxs-universal-chart-e2e
+          config: tests/e2e/kind.yaml
+          node_image: kindest/node:v1.35.0
+          kubectl_version: v1.35.0
+          wait: 60s
 
-      - name: Install kubeconform
-        run: |
-          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-${ARCH}.tar.gz" |
-          tar -xz -C /usr/local/bin kubeconform
-
-      - name: Run chart-testing (smoke-tests)
-        run: |
-          python3 tests/smokes/run/smoke.py --scenario default-empty
-          python3 tests/smokes/run/smoke.py --scenario schema-invalid-list-contract
-          python3 tests/smokes/run/smoke.py --scenario rendering-contract
-          python3 tests/smokes/run/smoke.py --scenario example-render
-          python3 tests/smokes/run/smoke.py --scenario example-kubeconform
+      - name: Run end-to-end install checks
+        env:
+          USE_EXISTING_CLUSTER: "true"
+          CLUSTER_NAME: nxs-universal-chart-e2e
+        run: bash tests/e2e/test-e2e.sh
