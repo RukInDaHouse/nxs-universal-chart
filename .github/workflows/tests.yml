@@ -1,6 +1,6 @@
 ---
 name: Tests
-run-name: ${{ github.actor }} is running test suite
+run-name: ${{ github.actor }} is running test suites
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
       - '**'
 
 jobs:
-  lint-test:
+  lint-tests:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -46,3 +46,19 @@ jobs:
 
       - name: Run chart-testing (lint)
         run: ct lint --config .github/linters/ct.yaml --chart-dirs . --charts .
+
+  unit-tests:
+    needs: lint-tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Run Helm Unit Tests
+        uses: helm-unittest/helm-unittest@v1
+        with:
+          charts: ./tests/units/*_test.yaml
