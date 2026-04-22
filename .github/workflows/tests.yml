@@ -58,7 +58,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Run Helm Unit Tests
-        uses: helm-unittest/helm-unittest@v1
-        with:
-          charts: ./tests/units/*_test.yaml
+      - name: Set up Helm
+        uses: azure/setup-helm@v5.0.0
+
+      - name: Install helm unittest plugin
+        run: helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.3 --verify=false
+
+      - name: Run chart-testing (unit-tests)
+        run: helm unittest -f 'tests/units/*_test.yaml' .
