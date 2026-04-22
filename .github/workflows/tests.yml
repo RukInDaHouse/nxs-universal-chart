@@ -7,9 +7,14 @@ on:
     branches:
       - '**'
 
+env:
+  KUBECONFORM_VERSION: "v0.7.0" # Workflow level
+  ARCH: "amd64"
+
 jobs:
-  lint-tests:
-    runs-on: ubuntu-latest
+
+  smoke-tests:
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
@@ -20,52 +25,25 @@ jobs:
 
       - name: Set up Helm
         uses: azure/setup-helm@v5.0.0
+
+      - name: Update helm dependencies
+        run: |
+          helm dependency update
 
       - uses: actions/setup-python@v6.0.0
         with:
           python-version: '3.13'
 
-      - name: Set up chart-testing
-        uses: helm/chart-testing-action@6ec842c01de15ebb84c8627d2744a0c2f2755c9f # v2.8.0
-        with:
-          # renovate: github=helm/chart-testing
-          version: v3.14.0
-
-      - name: Run chart-testing (list-changed)
-        id: list-changed
+      - name: Install kubeconform
         run: |
-          changed="$(ct list-changed --config .github/linters/ct.yaml)"
-          if [[ -n "$changed" ]]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            echo "changed_list=\"${changed//$'\n'/ }\"" >> "$GITHUB_OUTPUT"
-          fi
+          curl -fsSL "https://github.com/yannh/kubeconform/releases/download/${KUBECONFORM_VERSION}/kubeconform-linux-${ARCH}.tar.gz" |
+          tar -xz -C /usr/local/bin kubeconform
 
-      - name: install helm unittest plugin
-        if: steps.list-changed.outputs.changed == 'true'
-        run: helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.3 --verify=false
-
-      - name: Run chart-testing (lint)
-        run: ct lint --config .github/linters/ct.yaml --chart-dirs . --charts .
-
-  unit-tests:
-    needs: lint-tests
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5.0.0
-        with:
-          fetch-depth: 0
-
-      - name: Set up Helm
-        uses: azure/setup-helm@v5.0.0
-
-      - name: Install helm unittest plugin
+      - name: Run chart-testing (smoke-tests)
         run: |
-          helm plugin install https://github.com/helm-unittest/helm-unittest.git --version 1.0.3 --verify=false
-
-      - name: Run chart-testing (unit-tests)
-        run: |
-          helm dependency update
-          helm unittest -f 'tests/units/*_test.yaml' .
+          python3 tests/smokes/run/smoke.py
+          --scenario default-empty
+          --scenario schema-invalid-list-contract
+          --scenario rendering-contract
+          --scenario example-render
+          --scenario example-kubeconform
