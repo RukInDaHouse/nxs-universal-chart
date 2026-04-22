@@ -42,9 +42,8 @@ jobs:
 
       - name: Run chart-testing (smoke-tests)
         run: |
-          python3 tests/smokes/run/smoke.py
-          --scenario default-empty
-          --scenario schema-invalid-list-contract
-          --scenario rendering-contract
-          --scenario example-render
-          --scenario example-kubeconform
+          python3 tests/smokes/run/smoke.py --scenario default-empty
+          python3 tests/smokes/run/smoke.py --scenario schema-invalid-list-contract
+          python3 tests/smokes/run/smoke.py --scenario rendering-contract
+          python3 tests/smokes/run/smoke.py --scenario example-render
+          python3 tests/smokes/run/smoke.py --scenario example-kubeconform
